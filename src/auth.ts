@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import { isAllowed } from "@/lib/access";
 
 const SCOPES = [
   "openid",
@@ -48,9 +49,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   pages: { signIn: "/login" },
   callbacks: {
-    // Single-user app: only ALLOWED_EMAIL may sign in, since a session can send mail as you.
-    signIn: ({ profile }) =>
-      !!profile?.email && profile.email.toLowerCase() === process.env.ALLOWED_EMAIL?.toLowerCase(),
+    signIn: ({ profile }) => isAllowed(profile ?? undefined),
     async jwt({ token, account }) {
       const t = token as typeof token & Tok;
       if (account) {
@@ -74,4 +73,10 @@ export async function googleToken(): Promise<string> {
   const s = await auth();
   if (!s?.accessToken || s.error) throw new Error("Google session expired. Sign out and sign in again.");
   return s.accessToken;
+}
+
+/** Lowercased email of the signed-in user, or null. Every DB query is scoped by this. */
+export async function currentUser(): Promise<string | null> {
+  const s = await auth();
+  return s?.user?.email?.toLowerCase() ?? null;
 }

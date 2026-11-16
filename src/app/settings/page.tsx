@@ -1,17 +1,18 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { auth, signOut } from "@/auth";
+import { currentUser, signOut } from "@/auth";
 import { sql, type Contact } from "@/lib/db";
 import { getProfile } from "@/lib/profile";
 import { SettingsForm } from "./settings-form";
 
 // Data lives behind Suspense so the shell prerenders (Cache Components).
 async function SettingsData() {
-  if (!(await auth())) redirect("/login");
+  const user = await currentUser();
+  if (!user) redirect("/login");
   const [profile, contacts] = await Promise.all([
-    getProfile(),
-    sql()`SELECT id, name, email, roles, notes FROM contacts ORDER BY lower(name), id`.then((r) => r as Contact[]),
+    getProfile(user),
+    sql()`SELECT id, name, email, roles, notes FROM contacts WHERE user_email = ${user} ORDER BY lower(name), id`.then((r) => r as Contact[]),
   ]);
   return <SettingsForm initialProfile={profile} initialContacts={contacts} />;
 }

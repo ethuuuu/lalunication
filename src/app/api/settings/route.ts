@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { auth } from "@/auth";
+import { currentUser } from "@/auth";
 import { sql } from "@/lib/db";
 import { getProfile } from "@/lib/profile";
 import { encrypt } from "@/lib/crypto";
@@ -26,15 +26,18 @@ function secretUpdate(v: string | null | undefined) {
 }
 
 export async function GET() {
-  if (!(await auth())) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  return Response.json(await getProfile());
+  const user = await currentUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  return Response.json(await getProfile(user));
 }
 
 export async function PUT(req: Request) {
-  if (!(await auth())) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await currentUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: z.prettifyError(parsed.error) }, { status: 400 });
   const b = parsed.data;
+  await getProfile(user); // ensure row exists
   const g = secretUpdate(b.gemini_api_key);
   const i = secretUpdate(b.icloud_app_password);
   await sql()`
@@ -43,6 +46,6 @@ export async function PUT(req: Request) {
       model = ${b.model}, thinking_level = ${b.thinking_level}, icloud_username = ${b.icloud_username},
       gemini_api_key_enc = CASE WHEN ${g.set}::boolean THEN ${g.val}::text ELSE gemini_api_key_enc END,
       icloud_app_password_enc = CASE WHEN ${i.set}::boolean THEN ${i.val}::text ELSE icloud_app_password_enc END
-    WHERE id = 1`;
-  return Response.json(await getProfile());
+    WHERE user_email = ${user}`;
+  return Response.json(await getProfile(user));
 }

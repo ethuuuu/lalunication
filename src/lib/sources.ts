@@ -50,8 +50,8 @@ export async function googleCalendarEvents({ timeMin, timeMax, query }: Range) {
   return ok.flatMap((r) => r.value).sort((a, b) => a.start.localeCompare(b.start));
 }
 
-export async function appleCalendarEvents({ timeMin, timeMax, query }: Range) {
-  const creds = await getIcloudCreds();
+export async function appleCalendarEvents(user: string, { timeMin, timeMax, query }: Range) {
+  const creds = await getIcloudCreds(user);
   if (!creds) throw new Error("Apple Calendar not configured in Settings");
   const client = new DAVClient({
     serverUrl: "https://caldav.icloud.com",
@@ -92,19 +92,20 @@ export async function googleTasks({ query }: { query?: string }) {
   return perList.flat().filter((t) => matches(`${t.title} ${t.notes}`, query));
 }
 
-export async function appleReminders({ query }: { query?: string }) {
+export async function appleReminders(user: string, { query }: { query?: string }) {
   return (await sql()`
     SELECT title, notes, due, list_name FROM reminders
-    WHERE NOT completed
+    WHERE user_email = ${user} AND NOT completed
       AND (SELECT coalesce(bool_and((title || ' ' || notes) ILIKE '%' || w || '%'), true) FROM unnest(${words(query)}::text[]) w)
     ORDER BY due NULLS LAST LIMIT 50`) as { title: string; notes: string; due: string | null; list_name: string }[];
 }
 
 /** Word-wise, case-insensitive: "maths teacher" finds roles ["subject teacher: maths"]. */
-export async function contacts({ role, name }: { role?: string; name?: string }) {
+export async function contacts(user: string, { role, name }: { role?: string; name?: string }) {
   return (await sql()`
     SELECT id, name, email, roles, notes FROM contacts
-    WHERE (SELECT coalesce(bool_and(array_to_string(roles, ',') ILIKE '%' || w || '%'), true) FROM unnest(${words(role)}::text[]) w)
+    WHERE user_email = ${user}
+      AND (SELECT coalesce(bool_and(array_to_string(roles, ',') ILIKE '%' || w || '%'), true) FROM unnest(${words(role)}::text[]) w)
       AND (SELECT coalesce(bool_and(name ILIKE '%' || w || '%'), true) FROM unnest(${words(name)}::text[]) w)
     ORDER BY name LIMIT 50`) as Contact[];
 }

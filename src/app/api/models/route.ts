@@ -1,11 +1,12 @@
-import { auth } from "@/auth";
+import { currentUser } from "@/auth";
 import { getGeminiKey } from "@/lib/profile";
 
 type ApiModel = { name: string; displayName?: string; supportedGenerationMethods?: string[]; thinking?: boolean };
 
 export async function GET() {
-  if (!(await auth())) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const key = await getGeminiKey();
+  const user = await currentUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const key = await getGeminiKey(user);
   if (!key) return Response.json({ error: "No Gemini API key. Add one in Settings → AI." }, { status: 400 });
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}&pageSize=1000`,

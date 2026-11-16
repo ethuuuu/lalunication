@@ -1,9 +1,9 @@
-import { auth } from "@/auth";
+import { currentUser } from "@/auth";
 import { emailDraftSchema } from "@/lib/agent-prompt";
 import { sendGmail } from "@/lib/sources";
 
 export async function POST(req: Request) {
-  if (!(await auth())) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await currentUser())) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const parsed = emailDraftSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

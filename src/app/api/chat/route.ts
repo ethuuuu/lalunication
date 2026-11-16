@@ -9,7 +9,7 @@ import {
   type UIMessage,
 } from "ai";
 import { z } from "zod";
-import { auth } from "@/auth";
+import { currentUser } from "@/auth";
 import { getGeminiKey, getProfile } from "@/lib/profile";
 import { agentPrompt, emailDraftSchema } from "@/lib/agent-prompt";
 import * as src from "@/lib/sources";
@@ -35,13 +35,14 @@ const range = z.object({
 const q = z.object({ query: z.string().optional().describe("Keyword(s) to match") });
 
 export async function POST(req: Request) {
-  if (!(await auth())) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await currentUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  const apiKey = await getGeminiKey();
+  const apiKey = await getGeminiKey(user);
   if (!apiKey) return Response.json({ error: "Gemini API key missing. Add it in Settings." }, { status: 400 });
 
   const { messages }: { messages: UIMessage[] } = await req.json();
-  const profile = await getProfile();
+  const profile = await getProfile(user);
 
   const tools = {
     get_my_profile: tool({
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
     find_contacts: tool({
       description: 'Find university contacts by role (e.g. "class teacher", "HOD", "maths teacher") and/or name.',
       inputSchema: z.object({ role: z.string().optional(), name: z.string().optional() }),
-      execute: safe(src.contacts),
+      execute: safe((i: { role?: string; name?: string }) => src.contacts(user, i)),
     }),
     search_google_calendar: tool({
       description: "Search events across all of the student's Google Calendars in a time range.",
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
     search_apple_calendar: tool({
       description: "Search events in the student's iCloud (Apple) Calendar in a time range.",
       inputSchema: range,
-      execute: safe(src.appleCalendarEvents),
+      execute: safe((i: z.infer<typeof range>) => src.appleCalendarEvents(user, i)),
     }),
     search_google_tasks: tool({
       description: "Search the student's open Google Tasks.",
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
     search_apple_reminders: tool({
       description: "Search the student's open Apple Reminders.",
       inputSchema: q,
-      execute: safe(src.appleReminders),
+      execute: safe((i: z.infer<typeof q>) => src.appleReminders(user, i)),
     }),
     draft_email: tool({
       description: "Show the email draft to the user as a card with a Send button. Does NOT send. Call again to revise.",

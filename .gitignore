@@ -46,3 +46,7 @@ graphify-out/
 
 # design reference library (local only)
 design-md/
+
+# design guides (local reference only)
+ferrari/
+figma/
