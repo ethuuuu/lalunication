@@ -43,3 +43,6 @@ next-env.d.ts
 # graphify output
 graphify-out/
 .DS_Store
+
+# design reference library (local only)
+design-md/
