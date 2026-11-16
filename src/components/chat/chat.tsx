@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { EmailDraft, Profile } from "@/lib/db";
 import { DraftCard } from "./draft-card";
-import { ArrowUpIcon, GearIcon, Spinner, StopIcon } from "./icons";
+import { ArrowUpIcon, GearIcon, MicIcon, Spinner, StopIcon } from "./icons";
+import { useDictation } from "./use-dictation";
 
 type Part = UIMessage["parts"][number];
 type ToolResult = { ok: true; items: unknown[] } | { ok: false; error: string };
@@ -48,6 +49,7 @@ export function Chat() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [sent, setSent] = useState<string[]>([]);
   const [input, setInput] = useState("");
+  const dictation = useDictation(setInput);
   const askedPermission = useRef(false);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -113,6 +115,7 @@ export function Chat() {
   function submit(text: string) {
     const t = text.trim();
     if (!t || busy) return;
+    dictation.stop();
     if (!askedPermission.current && "Notification" in window && Notification.permission === "default") {
       askedPermission.current = true;
       Notification.requestPermission().catch(() => {});
@@ -242,6 +245,27 @@ export function Chat() {
               onKeyDown={onKeyDown}
               className="max-h-40 min-h-10 flex-1 resize-none bg-transparent py-2.5 text-[15px] text-ink outline-none [field-sizing:content] placeholder:text-muted"
             />
+            {dictation.supported && !busy && (
+              <button
+                type="button"
+                onClick={() => (dictation.listening ? dictation.stop() : dictation.start(input))}
+                aria-label={dictation.listening ? "Stop dictation" : "Dictate message"}
+                aria-pressed={dictation.listening}
+                className={`relative mr-1.5 grid size-10 pointer-coarse:size-11 shrink-0 place-items-center squircle press ${
+                  dictation.listening
+                    ? "bg-ink text-canvas"
+                    : "text-body hover:text-ink"
+                }`}
+              >
+                <MicIcon />
+                {dictation.listening && (
+                  <span
+                    aria-hidden
+                    className="absolute top-1.5 right-1.5 size-2 rounded-full bg-rosso animate-pulse motion-reduce:animate-none"
+                  />
+                )}
+              </button>
+            )}
             {busy ? (
               <button
                 type="button"
@@ -263,6 +287,9 @@ export function Chat() {
             )}
           </div>
         </form>
+        <p aria-live="polite" className="mx-auto max-w-3xl px-6 pt-2 text-xs text-body empty:hidden">
+          {dictation.error ?? (dictation.listening ? "Listening… tap the mic or send when you're done." : "")}
+        </p>
       </div>
     </div>
   );

@@ -22,6 +22,13 @@ export const ArrowUpIcon = () => (
   </svg>
 );
 
+export const MicIcon = () => (
+  <svg {...svg}>
+    <rect x="9" y="3" width="6" height="11" rx="3" />
+    <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+  </svg>
+);
+
 export const StopIcon = () => (
   <svg {...svg} fill="currentColor" stroke="none">
     <rect x="6" y="6" width="12" height="12" rx="2" />
