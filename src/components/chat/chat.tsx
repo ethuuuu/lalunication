@@ -144,7 +144,7 @@ export function Chat() {
           <Link
             href="/settings"
             aria-label="Settings"
-            className="ml-auto grid size-10 shrink-0 place-items-center rounded-full border border-hairline-strong text-body transition-colors hover:border-ink hover:text-ink"
+            className="ml-auto grid size-10 pointer-coarse:size-11 shrink-0 place-items-center squircle border border-hairline-strong text-body press hover:border-ink hover:text-ink"
           >
             <GearIcon />
           </Link>
@@ -153,7 +153,7 @@ export function Chat() {
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4">
         {profile && !profile.has_gemini_key && (
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-hairline-strong bg-elevated p-4">
+          <div className="animate-enter mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-hairline-strong bg-elevated p-4">
             <p className="text-sm text-body">Add your Gemini API key to start drafting emails.</p>
             <Link href="/settings" className="btn-ghost h-9 px-4 text-xs">
               Open settings
@@ -164,20 +164,22 @@ export function Chat() {
         {messages.length === 0 ? (
           <section className="flex flex-1 flex-col justify-center py-16">
             <p className="label mb-4">Your university email agent</p>
-            <h1 className="mb-10 text-4xl leading-[1.1] font-medium tracking-tight sm:text-6xl">
+            <h1 className="animate-enter mb-10 text-4xl leading-[1.1] font-medium tracking-tight sm:text-6xl">
               Who are we writing to?
             </h1>
             <div className="grid gap-3 sm:grid-cols-2">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s.text}
-                  type="button"
-                  onClick={() => submit(s.text)}
-                  disabled={busy}
-                  className={`${s.bg} min-h-28 rounded-2xl p-5 text-left text-[15px] leading-snug text-black transition-transform hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0`}
-                >
-                  {s.text}
-                </button>
+              {SUGGESTIONS.map((s, i) => (
+                // Enter animation on a wrapper so its fill-mode never fights the button's hover/press transforms.
+                <div key={s.text} className="animate-enter grid" style={{ "--stagger": i + 1 } as React.CSSProperties}>
+                  <button
+                    type="button"
+                    onClick={() => submit(s.text)}
+                    disabled={busy}
+                    className={`${s.bg} lift press min-h-28 rounded-2xl p-5 text-left text-[15px] leading-snug text-black`}
+                  >
+                    {s.text}
+                  </button>
+                </div>
               ))}
             </div>
           </section>
@@ -185,13 +187,13 @@ export function Chat() {
           <div role="log" aria-live="polite" aria-busy={busy} className="flex flex-col gap-6 py-8">
             {messages.map((m) =>
               m.role === "user" ? (
-                <div key={m.id} className="flex justify-end">
+                <div key={m.id} className="animate-enter flex justify-end">
                   <p className="max-w-[85%] rounded-2xl bg-card px-4 py-3 whitespace-pre-wrap">
                     {m.parts.map((p) => (p.type === "text" ? p.text : "")).join("")}
                   </p>
                 </div>
               ) : (
-                <div key={m.id} className="flex flex-col gap-3">
+                <div key={m.id} className="animate-fade flex flex-col gap-3">
                   {m.parts.map((p, i) => (
                     <AssistantPart
                       key={i}
@@ -210,7 +212,7 @@ export function Chat() {
               </p>
             )}
             {error && (
-              <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-hairline-strong p-4 text-sm">
+              <div role="alert" className="animate-fade flex flex-wrap items-center gap-3 rounded-xl border border-hairline-strong p-4 text-sm">
                 <span className="text-body">Something went wrong: {error.message}</span>
                 <button type="button" className="btn-ghost h-9 px-4 text-xs" onClick={() => regenerate()}>
                   Retry
@@ -245,7 +247,7 @@ export function Chat() {
                 type="button"
                 onClick={() => stop()}
                 aria-label="Stop generating"
-                className="grid size-10 shrink-0 place-items-center rounded-full border border-hairline-strong text-ink hover:border-ink"
+                className="grid size-10 pointer-coarse:size-11 shrink-0 place-items-center squircle border border-hairline-strong text-ink press hover:border-ink"
               >
                 <StopIcon />
               </button>
@@ -254,7 +256,7 @@ export function Chat() {
                 type="submit"
                 aria-label="Send message"
                 disabled={!input.trim()}
-                className="grid size-10 shrink-0 place-items-center rounded-full bg-rosso text-white transition-colors hover:bg-rosso-hover disabled:opacity-40"
+                className="grid size-10 pointer-coarse:size-11 shrink-0 place-items-center squircle bg-rosso text-white press duration-150 hover:bg-rosso-hover disabled:opacity-40"
               >
                 <ArrowUpIcon />
               </button>
@@ -309,10 +311,18 @@ function AssistantPart({
   return <ToolRow text={n === undefined || name === "get_my_profile" ? done : `${done} · ${n} result${n === 1 ? "" : "s"}`} />;
 }
 
+const fade = "transition-opacity duration-150 ease-[ease] motion-reduce:transition-none";
+
 function ToolRow({ text, pending, muted }: { text: string; pending?: boolean; muted?: boolean }) {
   return (
-    <p className={`flex items-center gap-2 text-sm ${muted ? "text-muted" : "text-body"}`}>
-      {pending ? <Spinner /> : <span aria-hidden className={`w-3.5 text-center ${muted ? "" : "text-success"}`}>{muted ? "–" : "✓"}</span>}
+    <p className={`animate-fade flex items-center gap-2 text-sm ${muted ? "text-muted" : "text-body"}`}>
+      {/* Spinner and mark share one cell and crossfade, so the row doesn't snap when the tool finishes. */}
+      <span aria-hidden className="grid w-3.5 place-items-center *:col-start-1 *:row-start-1">
+        <span className={`${fade} ${pending ? "opacity-100" : "opacity-0"}`}>
+          <Spinner />
+        </span>
+        <span className={`${fade} ${pending ? "opacity-0" : "opacity-100"} ${muted ? "" : "text-success"}`}>{muted ? "–" : "✓"}</span>
+      </span>
       {text}
     </p>
   );

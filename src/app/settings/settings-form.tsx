@@ -31,7 +31,8 @@ async function api<T>(url: string, method: string, body?: unknown): Promise<T> {
 function StatusLine({ status }: { status: Status }) {
   return (
     <p aria-live="polite" className={`text-sm ${status?.ok ? "text-success" : "text-rosso"}`}>
-      {status?.msg}
+      {/* Callers clear status before each request, so the span remounts and the fade re-runs per result. */}
+      {status && <span className="animate-fade">{status.msg}</span>}
     </p>
   );
 }
@@ -208,6 +209,7 @@ function AiSettings({ p, setP, save, busy, status }: {
       .catch((e: Error) => { setModels(null); setModelErr(e.message); });
   }, [p.has_gemini_key]);
 
+  const level = THINKING.indexOf(p.thinking_level as (typeof THINKING)[number]);
   const options = models && !models.some((m) => m.id === p.model) ? [{ id: p.model, displayName: p.model, thinking: false }, ...models] : models;
 
   return (
@@ -242,9 +244,16 @@ function AiSettings({ p, setP, save, busy, status }: {
 
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-2 text-sm text-body">Thinking level</legend>
-        <div className="inline-flex w-full max-w-md rounded-pill border border-hairline-strong p-1">
+        <div className="relative grid w-full max-w-md grid-cols-4 rounded-pill border border-hairline-strong p-1">
+          {level >= 0 && (
+            <span
+              aria-hidden
+              className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/4)] rounded-pill bg-ink transition-transform duration-200 ease-(--ease-in-out-cubic) motion-reduce:transition-none"
+              style={{ transform: `translateX(${level * 100}%)` }}
+            />
+          )}
           {THINKING.map((t) => (
-            <label key={t} className="flex-1">
+            <label key={t} className="relative">
               <input
                 type="radio"
                 name="thinking_level"
@@ -253,7 +262,7 @@ function AiSettings({ p, setP, save, busy, status }: {
                 onChange={() => setP((x) => ({ ...x, thinking_level: t }))}
                 className="peer sr-only"
               />
-              <span className="block cursor-pointer rounded-pill py-2 text-center text-sm capitalize text-body peer-checked:bg-ink peer-checked:text-canvas peer-focus-visible:outline-2 peer-focus-visible:outline-giallo">
+              <span className="block cursor-pointer rounded-pill py-2 text-center text-sm capitalize text-body transition-colors duration-200 motion-reduce:transition-none peer-checked:text-canvas peer-focus-visible:outline-2 peer-focus-visible:outline-giallo">
                 {t}
               </span>
             </label>
@@ -305,6 +314,7 @@ function RemindersSync() {
   const [status, setStatus] = useState<Status>();
 
   async function generate() {
+    setStatus(undefined);
     try {
       const { token } = await api<{ token: string }>("/api/reminders/token", "POST");
       setToken(token);
@@ -363,7 +373,7 @@ function ContactEditor({ initial, onSave, onCancel }: {
 
   return (
     <form
-      className="flex flex-col gap-6 rounded-lg bg-elevated p-6"
+      className="animate-enter flex flex-col gap-6 rounded-lg bg-elevated p-6"
       onSubmit={async (e) => {
         e.preventDefault();
         setErr("");
@@ -385,7 +395,7 @@ function ContactEditor({ initial, onSave, onCancel }: {
                 type="button"
                 aria-pressed={on}
                 onClick={() => toggle(r)}
-                className={`rounded-pill px-3 py-1 text-xs font-medium ${on ? `${roleBlock(r)} text-black` : "border border-hairline-strong text-body hover:text-ink"}`}
+                className={`press rounded-pill px-3 py-1 text-xs font-medium ${on ? `${roleBlock(r)} text-black` : "border border-hairline-strong text-body hover:text-ink"}`}
               >
                 {r}
               </button>
@@ -426,6 +436,7 @@ function ContactEditor({ initial, onSave, onCancel }: {
 function Contacts({ initial }: { initial: Contact[] }) {
   const [list, setList] = useState(initial);
   const [editing, setEditing] = useState<number | "new" | null>(null);
+  const [added, setAdded] = useState<number | null>(null);
   const sorted = (l: Contact[]) => [...l].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
@@ -448,7 +459,7 @@ function Contacts({ initial }: { initial: Contact[] }) {
               />
             </li>
           ) : (
-            <li key={c.id} className="flex flex-wrap items-start justify-between gap-4 border-b border-hairline py-5">
+            <li key={c.id} className={`${c.id === added ? "animate-enter " : ""}flex flex-wrap items-start justify-between gap-4 border-b border-hairline py-5`}>
               <div className="flex min-w-0 flex-col gap-2">
                 <span className="text-lg font-medium">{c.name}</span>
                 <span className="break-all text-sm text-body">{c.email}</span>
@@ -488,6 +499,7 @@ function Contacts({ initial }: { initial: Contact[] }) {
           onSave={async (body) => {
             const saved = await api<Contact>("/api/contacts", "POST", body);
             setList((l) => sorted([...l, saved]));
+            setAdded(saved.id);
             setEditing(null);
           }}
         />

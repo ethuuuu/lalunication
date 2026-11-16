@@ -33,6 +33,11 @@
 
   --radius-pill: 50px;
 
+  /* Motion (Emil Kowalski "Animations on the Web"): enter/exit = ease-out, on-screen movement = ease-in-out, hover = ease. */
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-cubic: cubic-bezier(0.645, 0.045, 0.355, 1);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -67,9 +72,10 @@ body {
   font-weight: 700;
   letter-spacing: 1.3px;
   text-transform: uppercase;
-  transition: background 150ms;
+  transition: background-color 150ms ease, transform 120ms ease;
   &:hover { background: var(--color-rosso-hover); }
-  &:active { background: var(--color-rosso-active); }
+  &:active:not(:disabled) { background: var(--color-rosso-active); transform: scale(0.97); }
+  @media (prefers-reduced-motion: reduce) { transition: none; &:active:not(:disabled) { transform: none; } }
   &:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
@@ -88,8 +94,10 @@ body {
   font-weight: 700;
   letter-spacing: 1.3px;
   text-transform: uppercase;
-  transition: border-color 150ms, background 150ms;
+  transition: border-color 150ms ease, background-color 150ms ease, transform 120ms ease;
   &:hover { border-color: var(--color-ink); }
+  &:active:not(:disabled) { transform: scale(0.97); }
+  @media (prefers-reduced-motion: reduce) { transition: none; &:active:not(:disabled) { transform: none; } }
   &:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
@@ -104,6 +112,50 @@ body {
   font-size: 14px;
   &:focus { outline: none; border-color: var(--color-ink); }
   &::placeholder { color: var(--color-muted); }
+}
+
+/* Icon plates: iOS-style squircle (full superellipse). Browsers without corner-shape get a 25% round corner.
+   Sizing from design-md refs: 40px plate (Composio toolkit-icon), 44px on touch (Apple/Framer/Oura). */
+@utility squircle {
+  border-radius: 25%;
+  @supports (corner-shape: squircle) {
+    border-radius: 50%;
+    corner-shape: squircle;
+  }
+}
+
+/* ---------- Motion ---------- */
+@keyframes enter {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+/* Element appearing: start near final state (scale .98, 6px), never from scale(0). */
+@utility animate-enter {
+  animation: enter 220ms var(--ease-out-quart) both;
+  animation-delay: calc(var(--stagger, 0) * 45ms);
+  @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+/* Small/frequent things (tool status rows, status text): shorter, fade only. */
+@utility animate-fade {
+  animation: fade-in 150ms var(--ease-out-quart) both;
+  @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+/* Tactile press feedback. */
+@utility press {
+  transition-property: transform, background-color, border-color, color, opacity;
+  transition-duration: 120ms;
+  transition-timing-function: ease;
+  &:active:not(:disabled) { transform: scale(0.97); }
+  @media (prefers-reduced-motion: reduce) { transition: none; &:active:not(:disabled) { transform: none; } }
+}
+/* Hover lift, only on real hover devices (touch fires hover on tap). */
+@utility lift {
+  transition: transform 200ms var(--ease-out-quart);
+  @media (hover: hover) and (pointer: fine) { &:hover { transform: translateY(-2px); } }
+  @media (prefers-reduced-motion: reduce) { transition: none; &:hover { transform: none; } }
 }
 
 :focus-visible {

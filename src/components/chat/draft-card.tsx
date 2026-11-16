@@ -24,14 +24,14 @@ export function DraftCard({ draft, actionable, sent, onSent }: Props) {
 
   if (sent) {
     return (
-      <p className="flex items-center gap-2 text-sm text-body" role="status">
+      <p className="animate-enter flex items-center gap-2 text-sm text-body" role="status">
         <span aria-hidden className="text-success">✓</span>
         Sent to {names || draft.to.join(", ")}
       </p>
     );
   }
   if (state === "discarded") {
-    return <p className="text-sm text-muted">Draft discarded.</p>;
+    return <p className="animate-fade text-sm text-muted">Draft discarded.</p>;
   }
 
   async function send() {
@@ -58,61 +58,64 @@ export function DraftCard({ draft, actionable, sent, onSent }: Props) {
   const locked = !actionable || state === "sending";
 
   return (
-    <article
-      aria-label={`Email draft: ${subject}`}
-      className={`rounded-xl border border-hairline-strong bg-elevated p-4 sm:p-6 ${actionable ? "" : "opacity-60"}`}
-    >
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <span className="label">Draft · {draft.tone}</span>
-        {!actionable && <span className="label text-muted">Superseded</span>}
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <Recipients label="To" emails={to} nameOf={(e) => draft.recipientNames?.[draft.to.indexOf(e)]} onChange={setTo} disabled={locked} />
-        <Recipients label="Cc" emails={cc} nameOf={() => undefined} onChange={setCc} disabled={locked} />
-
-        <label className="flex flex-col gap-1.5">
-          <span className="label">Subject</span>
-          <input className="field" value={subject} onChange={(e) => setSubject(e.target.value)} disabled={locked} />
-        </label>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="label">Body</span>
-          <textarea
-            className="field h-auto min-h-40 py-3 leading-relaxed [field-sizing:content]"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            disabled={locked}
-          />
-        </label>
-
-        {draft.context && <p className="text-xs text-muted">Date from {draft.context}</p>}
-      </div>
-
-      {actionable && (
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          <button type="button" className="btn-primary" onClick={send} disabled={state === "sending" || to.length === 0}>
-            {state === "sending" ? (
-              <>
-                <Spinner /> Sending
-              </>
-            ) : state === "error" ? (
-              "Retry send"
-            ) : (
-              "Send"
-            )}
-          </button>
-          <button type="button" className="btn-ghost" onClick={() => setState("discarded")} disabled={state === "sending"}>
-            Discard
-          </button>
-          {state === "error" && (
-            <p role="alert" className="w-full text-sm text-rosso">
-              {error}
-            </p>
-          )}
+    // Enter animation on a wrapper so its fill-mode doesn't pin the article's opacity when it's superseded.
+    <div className="animate-enter">
+      <article
+        aria-label={`Email draft: ${subject}`}
+        className={`rounded-xl border border-hairline-strong bg-elevated p-4 sm:p-6 transition-opacity duration-200 ease-(--ease-out-quart) motion-reduce:transition-none ${actionable ? "" : "opacity-60"}`}
+      >
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <span className="label">Draft · {draft.tone}</span>
+          {!actionable && <span className="label text-muted">Superseded</span>}
         </div>
-      )}
-    </article>
+
+        <div className="flex flex-col gap-3">
+          <Recipients label="To" emails={to} nameOf={(e) => draft.recipientNames?.[draft.to.indexOf(e)]} onChange={setTo} disabled={locked} />
+          <Recipients label="Cc" emails={cc} nameOf={() => undefined} onChange={setCc} disabled={locked} />
+
+          <label className="flex flex-col gap-1.5">
+            <span className="label">Subject</span>
+            <input className="field" value={subject} onChange={(e) => setSubject(e.target.value)} disabled={locked} />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="label">Body</span>
+            <textarea
+              className="field h-auto min-h-40 py-3 leading-relaxed [field-sizing:content]"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              disabled={locked}
+            />
+          </label>
+
+          {draft.context && <p className="text-xs text-muted">Date from {draft.context}</p>}
+        </div>
+
+        {actionable && (
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <button type="button" className="btn-primary" onClick={send} disabled={state === "sending" || to.length === 0}>
+              {state === "sending" ? (
+                <>
+                  <Spinner /> Sending
+                </>
+              ) : state === "error" ? (
+                "Retry send"
+              ) : (
+                "Send"
+              )}
+            </button>
+            <button type="button" className="btn-ghost" onClick={() => setState("discarded")} disabled={state === "sending"}>
+              Discard
+            </button>
+            {state === "error" && (
+              <p role="alert" className="animate-fade w-full text-sm text-rosso">
+                {error}
+              </p>
+            )}
+          </div>
+        )}
+      </article>
+    </div>
   );
 }
 
@@ -150,7 +153,7 @@ function Recipients({
     <div className="flex flex-wrap items-center gap-2">
       <span className="label w-8 shrink-0">{label}</span>
       {emails.map((email) => (
-        <span key={email} className="inline-flex max-w-full items-center gap-1 rounded-pill bg-card py-1 pr-1 pl-3 text-sm">
+        <span key={email} className="animate-fade inline-flex max-w-full items-center gap-1 rounded-pill bg-card py-1 pr-1 pl-3 text-sm">
           <span className="truncate">
             {nameOf(email) ? (
               <>
@@ -165,7 +168,7 @@ function Recipients({
               type="button"
               aria-label={`Remove ${email}`}
               onClick={() => onChange(emails.filter((x) => x !== email))}
-              className="grid size-6 place-items-center rounded-full text-body hover:bg-hairline-strong hover:text-ink"
+              className="grid size-6 place-items-center squircle text-body press hover:bg-hairline-strong hover:text-ink"
             >
               ×
             </button>
