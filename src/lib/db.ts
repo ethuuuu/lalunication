@@ -1,3 +1,4 @@
+import "server-only"; // build fails if client code value-imports this; `import type` is still fine
 import { neon } from "@neondatabase/serverless";
 
 // Lazy so `next build` doesn't crash before DATABASE_URL exists.
